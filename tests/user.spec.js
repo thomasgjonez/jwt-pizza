@@ -2,11 +2,49 @@ import { test, expect } from "playwright-test-coverage";
 
 test("updateUser", async ({ page }) => {
   const email = `user${Math.floor(Math.random() * 10000)}@jwt.com`;
+  const password = "diner";
+  let currentUser;
+
+  await page.route("*/**/api/auth", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      const req = route.request().postDataJSON();
+      currentUser = {
+        id: "99",
+        name: req.name,
+        email: req.email,
+        roles: [{ role: "diner" }],
+      };
+      await route.fulfill({ json: { user: currentUser, token: "abcdef" } });
+    } else if (method === "PUT") {
+      const req = route.request().postDataJSON();
+      expect(req.email).toBe(email);
+      expect(req.password).toBe(password);
+      await route.fulfill({ json: { user: currentUser, token: "abcdef" } });
+    } else if (method === "DELETE") {
+      await route.fulfill({ json: {} });
+    }
+  });
+
+  await page.route(/\/api\/user\/(?!me$)[^/]+$/, async (route) => {
+    expect(route.request().method()).toBe("PUT");
+    const req = route.request().postDataJSON();
+    currentUser = { ...currentUser, ...req };
+    await route.fulfill({ json: { user: currentUser, token: "abcdef" } });
+  });
+
+  await page.route("*/**/api/order", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({
+      json: { id: "h1", dinerId: currentUser?.id, orders: [] },
+    });
+  });
+
   await page.goto("/");
   await page.getByRole("link", { name: "Register" }).click();
   await page.getByRole("textbox", { name: "Full name" }).fill("pizza diner");
   await page.getByRole("textbox", { name: "Email address" }).fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill("diner");
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
   await page.getByRole("button", { name: "Register" }).click();
 
   await page.getByRole("link", { name: "pd" }).click();
@@ -34,7 +72,7 @@ test("updateUser", async ({ page }) => {
   await page.getByRole("link", { name: "Login" }).click();
 
   await page.getByRole("textbox", { name: "Email address" }).fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill("diner");
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
   await page.getByRole("button", { name: "Login" }).click();
 
   await page.getByRole("link", { name: "pd" }).click();
