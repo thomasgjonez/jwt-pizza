@@ -10,10 +10,9 @@ import {
   Role,
   Store,
   User,
+  UserList,
 } from "../service/pizzaService";
 import { TrashIcon } from "../icons";
-import { CloseIcon } from "../icons";
-import { HSOverlay } from "preline";
 
 interface Props {
   user: User | null;
@@ -27,14 +26,34 @@ export default function AdminDashboard(props: Props) {
   });
   const [franchisePage, setFranchisePage] = React.useState(0);
   const filterFranchiseRef = React.useRef<HTMLInputElement>(null);
-  const [selectedFranchise, setSelectedFranchise] =
-    React.useState<Franchise | null>(null);
+  const [userList, setUserList] = React.useState<UserList>({
+    users: [],
+    more: false,
+  });
+  const [userPage, setUserPage] = React.useState(0);
+  const filterUserRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     (async () => {
       setFranchiseList(await pizzaService.getFranchises(franchisePage, 3, "*"));
     })();
   }, [props.user, franchisePage]);
+
+  React.useEffect(() => {
+    (async () => {
+      setUserList(await pizzaService.listUsers(userPage, 10, "*"));
+    })();
+  }, [props.user, userPage]);
+
+  async function filterUsers() {
+    setUserList(
+      await pizzaService.listUsers(
+        userPage,
+        10,
+        `*${filterUserRef.current?.value}*`
+      )
+    );
+  }
 
   function createFranchise() {
     navigate("/admin-dashboard/create-franchise");
@@ -52,6 +71,10 @@ export default function AdminDashboard(props: Props) {
     });
   }
 
+  async function closeUser(user: User) {
+    navigate("/admin-dashboard/close-user", { state: { user: user } });
+  }
+
   async function filterFranchises() {
     setFranchiseList(
       await pizzaService.getFranchises(
@@ -60,11 +83,6 @@ export default function AdminDashboard(props: Props) {
         `*${filterFranchiseRef.current?.value}*`
       )
     );
-  }
-
-  function showFranchiseUsers(franchise: Franchise) {
-    setSelectedFranchise(franchise);
-    HSOverlay.open(document.getElementById("hs-franchise-users-modal")!);
   }
 
   let response = <NotFound />;
@@ -105,10 +123,7 @@ export default function AdminDashboard(props: Props) {
                             className="divide-y divide-gray-200"
                           >
                             <tr className="border-neutral-500 border-t-2">
-                              <td
-                                className="text-start px-2 whitespace-nowrap text-l font-mono text-orange-600 cursor-pointer underline"
-                                onClick={() => showFranchiseUsers(franchise)}
-                              >
+                              <td className="text-start px-2 whitespace-nowrap text-l font-mono text-orange-600">
                                 {franchise.name}
                               </td>
                               <td
@@ -218,34 +233,96 @@ export default function AdminDashboard(props: Props) {
             onPress={createFranchise}
           />
         </div>
-        <div
-          role="dialog"
-          aria-modal="true"
-          id="hs-franchise-users-modal"
-          className="hs-overlay hidden size-full fixed top-10 start-0 z-[80] overflow-x-hidden overflow-y-auto pointer-events-none"
-        >
-          <div className="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all sm:max-w-lg sm:w-full m-3 sm:mx-auto min-h-[calc(100%-3.5rem)]">
-            <div className="w-full flex flex-col bg-white border shadow-sm rounded-xl pointer-events-auto">
-              <div className="flex justify-between items-center py-3 px-4 border-b bg-slate-200 rounded-t-xl">
-                <h3 className="font-bold text-gray-800">
-                  {selectedFranchise?.name} users
-                </h3>
-                <button
-                  type="button"
-                  className="flex justify-center items-center size-7 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none"
-                  data-hs-overlay="#hs-franchise-users-modal"
-                >
-                  <CloseIcon className="" />
-                </button>
-              </div>
-              <div className="p-4 overflow-y-scroll max-h-52">
-                <ul>
-                  {selectedFranchise?.admins?.map((a) => (
-                    <li key={a.id ?? a.email}>
-                      {a.name} — {a.email}
-                    </li>
-                  ))}
-                </ul>
+
+        <div className="text-start py-8 px-4 sm:px-6 lg:px-8">
+          <h3 className="text-neutral-100 text-xl">Users</h3>
+          <div className="bg-neutral-100 overflow-clip my-4">
+            <div className="flex flex-col">
+              <div className="-m-1.5 overflow-x-auto">
+                <div className="p-1.5 min-w-full inline-block align-middle">
+                  <div className="overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="uppercase text-neutral-100 bg-slate-400 border-b-2 border-gray-500">
+                        <tr>
+                          {["Name", "Email", "Role", "Action"].map(
+                            (header) => (
+                              <th
+                                key={header}
+                                scope="col"
+                                className="px-6 py-3 text-center text-xs font-medium"
+                              >
+                                {header}
+                              </th>
+                            )
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {userList.users.map((u, uindex) => (
+                          <tr key={uindex} className="hover:bg-gray-100">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800">
+                              {u.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800">
+                              {u.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800">
+                              {u.roles?.map((r) => r.role).join(", ")}
+                            </td>
+                            <td className="px-6 py-1 whitespace-nowrap text-end text-sm font-medium">
+                              <button
+                                type="button"
+                                className="px-2 py-1 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-1 border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800"
+                                onClick={() => closeUser(u)}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td className="px-1 py-1">
+                            <input
+                              type="text"
+                              ref={filterUserRef}
+                              name="filterUser"
+                              placeholder="Filter users"
+                              className="px-2 py-1 text-sm border border-gray-300 rounded-lg"
+                            />
+                            <button
+                              type="submit"
+                              className="ml-2 px-2 py-1 text-sm font-semibold rounded-lg border border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800"
+                              onClick={filterUsers}
+                            >
+                              Search
+                            </button>
+                          </td>
+                          <td colSpan={3} className="text-end text-sm font-medium">
+                            <button
+                              aria-label="Previous users page"
+                              className="w-12 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300 "
+                              onClick={() => setUserPage(userPage - 1)}
+                              disabled={userPage <= 0}
+                            >
+                              «
+                            </button>
+                            <button
+                              aria-label="Next users page"
+                              className="w-12 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300"
+                              onClick={() => setUserPage(userPage + 1)}
+                              disabled={!userList.more}
+                            >
+                              »
+                            </button>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

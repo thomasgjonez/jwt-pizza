@@ -18,6 +18,7 @@ import CreateStore from "../views/createStore";
 import CreateFranchise from "../views/createFranchise";
 import CloseFranchise from "../views/closeFranchise";
 import CloseStore from "../views/closeStore";
+import CloseUser from "../views/closeUser";
 import Payment from "../views/payment";
 import NotFound from "../views/notFound";
 import Docs from "../views/docs";
@@ -113,6 +114,12 @@ export default function App() {
       title: "Close store",
       to: "/:subPath?/close-store",
       component: <CloseStore />,
+      display: [],
+    },
+    {
+      title: "Close user",
+      to: "/:subPath?/close-user",
+      component: <CloseUser />,
       display: [],
     },
     { title: "Payment", to: "/payment", component: <Payment />, display: [] },
