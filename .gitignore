@@ -7,6 +7,9 @@ coverage
 dist
 **/.vite
 
+misc.sh
+misc.txt
+
 node_modules/
 /test-results/
 /playwright-report/
