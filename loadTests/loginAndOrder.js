@@ -166,7 +166,7 @@ export function scenario_1() {
       })
     ) {
       console.log(response.body);
-      fail("Login was *not* 200");
+      fail("Order was *not* 200");
     }
     const body = JSON.parse(response.body);
     const jwt_token = body.response.jwt;
